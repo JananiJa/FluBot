@@ -26,6 +26,7 @@ var pregnancy;
 var medCond;
 var environment;
 var allergy;
+var medical;
 var illness;
 
 class UserProfileDialog extends ComponentDialog {
@@ -45,7 +46,8 @@ class UserProfileDialog extends ComponentDialog {
             this.ageStep.bind(this),
             this.pregnancyStep.bind(this),
             this.medicalConditionStep.bind(this),
-            //this.summaryStep.bind(this)
+            this.allergyStep.bind(this),
+            this.allergictoStep.bind(this)
         ]));
 
         this.initialDialogId = WATERFALL_DIALOG;
@@ -114,10 +116,16 @@ class UserProfileDialog extends ComponentDialog {
             else if(step.values.age == '2-10 years') {
                 return step.context.sendActivity('Your child is eligible for a free flu vaccination as long as they were born between 1st September 2008 and 31st August 2017. \nIf your child was born between 1 September 2015 and 31 August 2017, their vaccination will be provided at your GP practice - please book an appointment at the practice.\nIf your child was born between 1 September 2008 and 31 August 2015, their vaccination will be provided at their primary school - please speak to the school.');
             }
-            // else if(step.values.age == 'Above 65 years' || step.values.age == '6 months to 2 years')
-            // {
-            //     return await step.medicalConditionStep();
-            // }
+            else if(step.values.age == 'Above 65 years' || step.values.age == '6 months to 2 years')
+            {
+                medical = false;
+                return await step.prompt(CHOICE_PROMPT, {
+                    prompt: 'Do you have any of the long-term medical conditions as shown below?',
+                    choices: ChoiceFactory.toChoices(['Diabetes', 'COPD', 'Parkinsons',
+                    'Nervous Problems', 'Asthma', 'Spleen problems', 'Heart disease', 'Learning disability', 'Weak immune system',
+                    'Had stroke or TIA', 'Liver disease', 'Cancer', 'Kidney disease', 'Learning disability', 'Motor neuron disease', 'None'])
+                });       
+            }
 
         } else {
             return await step.ageStep();
@@ -128,7 +136,7 @@ class UserProfileDialog extends ComponentDialog {
         step.values.pregnancy = step.result.value;
         pregnancy = step.values.pregnancy;
         console.log(step.values);
-        if(step.result)
+        if(step.result && medical!=false)
         {
             return await step.prompt(CHOICE_PROMPT, {
                 prompt: 'Do you have any of the long-term medical conditions as shown below?',
@@ -137,9 +145,42 @@ class UserProfileDialog extends ComponentDialog {
                 'Had stroke or TIA', 'Liver disease', 'Cancer', 'Kidney disease', 'Learning disability', 'Motor neuron disease', 'None'])
             });       
         } else {
-            return await step.ageStep();
+            return await step.pregnancyStep();
         }
     }
+
+    async allergyStep(step) {
+        step.values.medicalConditions = step.result.value;
+        if (step.result) {
+            return await step.prompt(CHOICE_PROMPT, {
+                prompt: 'Do you have any allergy?',
+                choices: ChoiceFactory.toChoices(['Yes', 'No'])
+            });       
+    } else {
+            return await step.selfStep();
+        }
+    }
+    async allergictoStep(step) {
+        step.values.allergy = step.result.value;
+        console.log(step.values);
+        if (step.result) {
+            if(step.values.allergy == 'Yes') {
+                return await step.prompt(CHOICE_PROMPT, {
+                    prompt: 'What are they allergic to?',
+                    choices: ChoiceFactory.toChoices(['Eggs', 'Cows’ milk', 'Gluten', 'Fruit', 'Household chemicals', 'Latex'])
+                });       
+            }
+            if(step.values.allergy == 'No') {
+                return await step.prompt(CHOICE_PROMPT, {
+                    prompt: 'Do any of the following apply to them?',
+                    choices: ChoiceFactory.toChoices(['Allergy', 'Fever', 'None'])
+                });        
+            }
+        } else {
+            return await step.allergyStep();
+        }
+    }
+
  }
 
 module.exports.UserProfileDialog = UserProfileDialog;
