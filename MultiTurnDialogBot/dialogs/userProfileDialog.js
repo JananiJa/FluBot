@@ -46,8 +46,12 @@ class UserProfileDialog extends ComponentDialog {
             this.ageStep.bind(this),
             this.pregnancyStep.bind(this),
             this.medicalConditionStep.bind(this),
+            this.invitationStep.bind(this),
+            this.conditionChangedStep.bind(this),
+            this.environmentStep.bind(this),
             this.allergyStep.bind(this),
-            this.allergictoStep.bind(this)
+            this.allergictoStep.bind(this),
+            this.feverOrReactionStep.bind(this),
         ]));
 
         this.initialDialogId = WATERFALL_DIALOG;
@@ -118,15 +122,9 @@ class UserProfileDialog extends ComponentDialog {
             }
             else if(step.values.age == 'Above 65 years' || step.values.age == '6 months to 2 years')
             {
-                medical = false;
-                return await step.prompt(CHOICE_PROMPT, {
-                    prompt: 'Do you have any of the long-term medical conditions as shown below?',
-                    choices: ChoiceFactory.toChoices(['Diabetes', 'COPD', 'Parkinsons',
-                    'Nervous Problems', 'Asthma', 'Spleen problems', 'Heart disease', 'Learning disability', 'Weak immune system',
-                    'Had stroke or TIA', 'Liver disease', 'Cancer', 'Kidney disease', 'Learning disability', 'Motor neuron disease', 'None'])
-                });       
+                step.values.pregnancy = 'null';
+                return await step.next(1);
             }
-
         } else {
             return await step.ageStep();
         }
@@ -135,17 +133,74 @@ class UserProfileDialog extends ComponentDialog {
     async medicalConditionStep(step) {
         step.values.pregnancy = step.result.value;
         pregnancy = step.values.pregnancy;
-        console.log(step.values);
-        if(step.result && medical!=false)
+        if(step.result)
         {
             return await step.prompt(CHOICE_PROMPT, {
                 prompt: 'Do you have any of the long-term medical conditions as shown below?',
                 choices: ChoiceFactory.toChoices(['Diabetes', 'COPD', 'Parkinsons',
                 'Nervous Problems', 'Asthma', 'Spleen problems', 'Heart disease', 'Learning disability', 'Weak immune system',
-                'Had stroke or TIA', 'Liver disease', 'Cancer', 'Kidney disease', 'Learning disability', 'Motor neuron disease', 'None'])
-            });       
+                'Had stroke or TIA', 'Liver disease', 'Cancer', 'Kidney disease', 'Motor neuron disease', 'None'])
+            });           
         } else {
-            return await step.pregnancyStep();
+            return await step.ageStep();
+        }
+    }
+
+    async invitationStep(step) {
+        step.values.medicalConditions = step.result.value;
+        if(step.result)
+        {
+            if(step.values.medicalConditions != 'Diabetes' || step.values.medicalConditions != 'COPD' || step.values.medicalConditions != 'Parkinsons' || step.values.medicalConditions != 'Motor neuron disease') {
+                return await step.prompt(CHOICE_PROMPT, {
+                    prompt: 'Have you been invited for a flu jab this year or last year?',
+                    choices: ChoiceFactory.toChoices(['Yes', 'No', 'Don\'t know'])
+                });    
+            }
+            else{
+                step.values.invitation = 'null';
+                return await step.next(1);
+            }           
+        } else {
+            return await step.ageStep();
+        }
+    }
+    async conditionChangedStep(step) {
+        step.values.invitation = step.result.value;
+        if(step.result)
+        {
+            if(step.values.invitation == 'Yes')
+            return await step.prompt(CHOICE_PROMPT, {
+                prompt: 'Has your health condition changed since the last flu jab invitation or flu vaccination?',
+                choices: ChoiceFactory.toChoices(['Yes', 'No', 'Don\'t know'])
+            });
+            else if(step.values.invitation == 'No') {
+                step.values.conditionChanged = 'null';
+                return await step.next(1);
+            }
+            else if(step.values.medicalConditions == 'Diabetes' || step.values.medicalConditions == 'COPD' || step.values.medicalConditions == 'Parkinsons' || step.values.medicalConditions == 'Motor neuron disease') {
+                step.values.conditionChanged = 'null';
+                return await step.next(1);
+            }
+        } else {
+            return await step.ageStep();
+        }
+    }
+    async environmentStep(step) {
+        step.values.environment = step.result.value;
+        if(step.result)
+        {
+            if(step.values.conditionChanged != 'null'){
+                return await step.prompt(CHOICE_PROMPT, {
+                    prompt: 'Do any of the following apply to you?\n1. Social care or hospice worker\n2. Carer receiving a carer\'s allowance\n3. Carer but don\'t receive a carer\'s allowance\n4. Live in a care home',
+                    choices: ChoiceFactory.toChoices(['Yes', 'No'])
+                });               
+            }
+            else if(step.values.medicalConditions == 'Diabetes' || step.values.medicalConditions == 'COPD' || step.values.medicalConditions == 'Parkinsons' || step.values.medicalConditions == 'Motor neuron disease') {
+                step.values.conditionChanged = 'null';
+                return await step.next(1);
+            }
+        } else {
+            return await step.ageStep();
         }
     }
 
@@ -162,7 +217,6 @@ class UserProfileDialog extends ComponentDialog {
     }
     async allergictoStep(step) {
         step.values.allergy = step.result.value;
-        console.log(step.values);
         if (step.result) {
             if(step.values.allergy == 'Yes') {
                 return await step.prompt(CHOICE_PROMPT, {
@@ -170,17 +224,35 @@ class UserProfileDialog extends ComponentDialog {
                     choices: ChoiceFactory.toChoices(['Eggs', 'Cows’ milk', 'Gluten', 'Fruit', 'Household chemicals', 'Latex'])
                 });       
             }
-            if(step.values.allergy == 'No') {
-                return await step.prompt(CHOICE_PROMPT, {
-                    prompt: 'Do any of the following apply to them?',
-                    choices: ChoiceFactory.toChoices(['Allergy', 'Fever', 'None'])
-                });        
+            else if(step.values.allergy == 'No') {
+                step.values.allergicTo = 'null';
+                return await step.next(1);
             }
         } else {
             return await step.allergyStep();
         }
     }
 
+    async feverOrReactionStep(step) {
+        step.values.allergicTo = step.result.value;
+        if (step.result) {
+            return await step.prompt(CHOICE_PROMPT, {
+                prompt: 'Do any of the following apply to them?',
+                choices: ChoiceFactory.toChoices(['Allergy', 'Fever', 'None'])
+            });        
+        } else {
+            return await step.allergyStep();
+        }
+    }
+    async outcomeStep(step) {
+        step.values.feverOrReaction = step.result.value;
+        if(step.result) {
+            if(step.values.self == 'Myself' && step.values.age == '11-17 years' && step.values.pregnancy == 'Yes' && (step.values.medicalConditions != 'Diabetes' || step.values.medicalConditions != 'COPD' || step.values.medicalConditions != 'Parkinsons' || step.values.medicalConditions != 'Motor neuron disease') &&
+            step.values.allergy == 'Yes' && step.values.allergicTo == 'Eggs' && step.values.feverOrReaction == 'Allergy') {
+                return step.context.sendActivity('Seek GP advice!!!');
+            }
+        }
+    }
  }
 
 module.exports.UserProfileDialog = UserProfileDialog;
